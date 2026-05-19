@@ -35,7 +35,29 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Process with Gemini
         report = analyze_label(photo_path)
-        await message.reply_text(report)
+        
+        # Telegram has a 4096 character limit per message.
+        # We split the report if it's too long.
+        max_length = 4096
+        if len(report) <= max_length:
+            await message.reply_text(report)
+        else:
+            chunks = []
+            while len(report) > max_length:
+                # Find the last newline within the limit to avoid breaking formatting
+                split_index = report.rfind('\n', 0, max_length)
+                if split_index == -1: # No newline found, just split at max_length
+                    split_index = max_length
+                
+                chunks.append(report[:split_index])
+                report = report[split_index:].lstrip()
+            
+            if report:
+                chunks.append(report)
+            
+            for chunk in chunks:
+                await message.reply_text(chunk)
+                
     except Exception as e:
         logging.error(f"Error analyzing label: {e}")
         await message.reply_text("Sorry, I encountered an error while analyzing the image. Please try again with a clearer photo.")
